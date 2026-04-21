@@ -1,0 +1,4 @@
+interface:
+  display_name: "Chunk To DB"
+  short_description: "Build and query LanceDB from chunk JSON"
+  default_prompt: "Use $chunk-to-db to build or validate LanceDB from rtd-to-chunk outputs and run health/search checks."

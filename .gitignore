@@ -1,0 +1,10 @@
+.codex
+__pycache__/
+*.pyc
+.vscode
+node_modules/
+package*.json
+tmp/
+debug.py
+download_pulsar2_doc.sh
+AGENTS.md
