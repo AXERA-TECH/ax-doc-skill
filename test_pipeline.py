@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""End-to-end validator for rtd-to-chunk -> chunk-to-db workflows."""
+"""End-to-end validator for rtd-to-chunk -> chunk-to-db -> pulsar2-doc-search workflows."""
 
 from __future__ import annotations
 
@@ -139,9 +139,10 @@ def main() -> int:
 
     rtd_scripts = root / "rtd-to-chunk" / "scripts"
     chunk_scripts = root / "chunk-to-db" / "scripts"
+    search_scripts = root / "pulsar2-doc-search" / "scripts"
     chunk_output_root = rtd_scripts / "tmp"
     chunk_output_dir = chunk_output_root / args.run_id
-    assets_dir = root / "chunk-to-db" / "assets"
+    assets_dir = root / "pulsar2-doc-search" / "assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
     report_path = assets_dir / f"test_report_{args.run_id}.json"
 
@@ -227,7 +228,7 @@ def main() -> int:
         for action in actions:
             cmd = [
                 sys.executable,
-                str(chunk_scripts / "server_db.py"),
+                str(search_scripts / "server_db.py"),
                 "--db-dir",
                 str(db_dir),
                 "--table",

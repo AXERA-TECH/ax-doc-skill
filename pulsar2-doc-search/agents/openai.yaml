@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pulsar2 Doc Search"
+  short_description: "Query existing Pulsar2 LanceDB"
+  default_prompt: "Use $pulsar2-doc-search to run health checks and retrieval (FTS/vector/hybrid) against Pulsar2 docs."
