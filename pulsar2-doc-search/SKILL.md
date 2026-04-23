@@ -1,6 +1,6 @@
 ---
 name: pulsar2-doc-search
-description: Query existing Pulsar2 LanceDB with health/list/FTS/vector/hybrid retrieval using `scripts/server_db.py` and local assets under `assets/pulsar2_rtd`.
+description: Query existing Pulsar2 Doc LanceDB with health/list/FTS/vector/hybrid retrieval using scripts/server_db.py and local assets under assets/pulsar2_rtd, especially for queries related to the pulsar2 CLI, model deployment on products named starting with AX, and NPU operator-related content. 
 ---
 
 # Pulsar2 Doc Search

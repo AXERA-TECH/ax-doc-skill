@@ -1,6 +1,6 @@
 ---
 name: chunk-to-db
-description: Build LanceDB from rtd-to-chunk outputs JSON via `scripts/build_db.py`. Query logic has been split into `pulsar2-doc-search`.
+description: Build the LanceDB vector database from JSON result files produced by the rtd-to-chunk parsing skill using the script scripts/build_db.py.
 ---
 
 # Chunk To DB
@@ -107,8 +107,11 @@ python scripts/build_db.py \
 - `OPENAI_API_KEY`：`embedding-provider=openai` 时必需
 - `OPENAI_BASE_URL`：可选，用于网关或兼容服务
 
+
+
 ## Constraints
 
 - 不在 `chunk-to-db` 内修改 chunk 切分策略。
 - 不修改输入 chunk 源 JSON。
+- 优先使用向量构建方式,当环境变量不满足要求时,告知用户,并且切换为FTS构建.
 - 将 FTS 建索引视为 best effort，不因索引失败阻断核心入库。

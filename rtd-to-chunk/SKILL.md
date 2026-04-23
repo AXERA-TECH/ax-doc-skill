@@ -1,6 +1,6 @@
 ---
 name: rtd-to-chunk
-description: Convert RTD-style markdown (local files or GitHub repository/tree/root URLs) into structured chunk JSON for retrieval and downstream DB build. Use when running `rtd-to-chunk/scripts/execute.py`, validating chunk output contracts, debugging preprocessing/classification/chunking behavior, exporting retrieval_text for review, or iterating rules in `scripts/rtd2chunk_pipeline_pkg/`.
+description: Convert RTD-style markdown (local files or GitHub repository/tree/root URLs) into structured chunk JSON for retrieval and downstream DB build. Use when running `rtd-to-chunk/scripts/execute.py`, validating chunk output contracts, debugging preprocessing/classification/chunking behavior, exporting retrieval_text for review, or iterating rules in `scripts/rtd2chunk_pipeline_pkg/`.After chunk generation finishes, it will ask users whether to run chunk-to-db for LanceDB construction, and generate a dedicated retrieval skill following the logic of pulsar2-doc-search with a user-defined skill name.
 ---
 
 # RTD2Chunk Pipeline
@@ -83,8 +83,8 @@ source(offline_md | github_rtd)
 
 ## 输出目录
 
-- 文档级：`outputs/<run_id>/<doc_id>.json`
-- 运行级：`outputs/<run_id>/_run_summary.json`
+- 文档级：`scripts/tmp/<run_id>/<doc_id>.json`
+- 运行级：`scripts/tmp/<run_id>/_run_summary.json`
 
 ## Validation Checklist
 
