@@ -1,0 +1,4 @@
+interface:
+  display_name: "RTD2Chunk Pipeline"
+  short_description: "Convert RTD docs into retrieval chunks"
+  default_prompt: "Use $rtd-to-chunk to execute the RTD-to-chunk workflow and inspect final outputs."
