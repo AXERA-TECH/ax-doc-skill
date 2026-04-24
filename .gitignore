@@ -9,3 +9,5 @@ debug.py
 download_pulsar2_doc.sh
 AGENTS.md
 .idea
+chunk-to-db/assets
+pulsar2-doc-search/assets

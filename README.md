@@ -20,9 +20,9 @@ pulsar2-doc-search    对 LanceDB 执行 FTS / 向量 / 混合检索
 
 项目根目录提供脚本 `build_pulsar2_db_pipeline.py`，用于一键执行：
 
-1. 从 `https://github.com/AXERA-TECH/pulsar2-docs` 拉取并切分文档（`rtd-to-chunk/scripts/execute.py`）
+1. 从 `https://github.com/AXERA-TECH/pulsar2-docs` 拉取并切分文档（`rtd-to-chunk/scripts/chunk.py`）
 2. 构建 LanceDB（`chunk-to-db/scripts/build_db.py`）
-3. 覆盖 `chunk-to-db/assets/pulsar2_rtd`（默认会先删除旧目录再重建）
+3. 覆盖 `pulsar2-doc-search/assets/pulsar2_rtd`（默认会先删除旧目录再重建）
 
 仅 FTS（默认）：
 
@@ -40,9 +40,11 @@ python3 build_pulsar2_db_pipeline.py --embedding-provider openai
 
 - `--repo-url`：指定 GitHub 仓库/目录 URL
 - `--run-id`：指定本次产物目录名
-- `--router-mode rule|llm`、`--llm-model`：控制切分路由
+- `--max-concurrency`：指定切分阶段并发度
+- `--log-level`：指定 `rtd-to-chunk` 日志级别
+- `--chunk-output-root`：指定 chunk 输出根目录
 - `--table`：指定目标表名（默认 `pulsar2-doc`）
-- `--db-subdir`：指定 `chunk-to-db/assets` 下 DB 子目录（默认 `pulsar2_rtd`）
+- `--db-subdir`：指定 `pulsar2-doc-search/assets` 下 DB 子目录（默认 `pulsar2_rtd`）
 - `--keep-existing-db`：构建前不删除现有 DB 目录（仍以 `overwrite` 模式写表）
 
 ## Skills
@@ -52,7 +54,7 @@ python3 build_pulsar2_db_pipeline.py --embedding-provider openai
 将 RTD 风格的 Markdown 文档（本地目录或 GitHub URL）解析为结构化 chunk JSON，供下游入库和检索使用。
 
 - 支持离线目录与 GitHub 仓库/目录 URL 两种输入模式
-- 路由策略支持 `rule`（规则）和 `llm`（大模型，失败自动回退 rule）
+- 使用轻量 rule-based 分类
 - 输出每文档一个 JSON 及 `_run_summary.json`
 
 ### chunk-to-db
@@ -74,7 +76,7 @@ python3 build_pulsar2_db_pipeline.py --embedding-provider openai
 
 | 变量 | 用途 | 必需场景 |
 |------|------|----------|
-| `OPENAI_API_KEY` | LLM 路由 / Embeddings | `--router-mode llm` 或向量构建/检索 |
+| `OPENAI_API_KEY` | Embeddings | 向量构建/检索 |
 | `OPENAI_BASE_URL` | 自定义 API 网关 | 可选 |
 
 

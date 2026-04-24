@@ -1,48 +1,18 @@
-# Pipeline Flow
-# RawDocument
-#   |
-#   v
-# preprocess_content(raw_content)
-#   |
-#   v
-# classify_document(title, preprocessed, router_mode)
-#   |
-#   rule_based_classify
-#   v
-# PROCESSOR_MAP[document_type](preprocessed)
-#   |
-#   v
-# plan_chunks(document_type, title, url, processed_content)
-#   |
-#   v
-# PipelineResult(...)
-#   |
-#   v
-# dump_json(output_dir/{doc_id}.json)
-
-"""Pipeline execution for document chunking."""
+"""Batch and document pipeline orchestration."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 from pathlib import Path
-from .models import DocumentClassification, PipelineResult, RawDocument
-from .rtd_processors import PROCESSOR_MAP
-from .router import  rule_based_classify
-from .pulsar2_chunker import plan_chunks, preprocess_content
-from .utils import dump_json
+
+from .pulsar2_chunking import plan_chunks, preprocess_content
+from .common import dump_json
+from .models import PipelineResult, RawDocument
+from .rules import PROCESSOR_MAP, rule_based_classify
 
 logger = logging.getLogger(__name__)
 
-
-async def classify_document(
-    *,
-    title: str,
-    content: str,
-) -> DocumentClassification:
-    logger.debug("Using rule-based classifier for title='%s'.", title)
-    return rule_based_classify(title, content)
 
 async def run_pipeline_for_document(
     *,
@@ -54,15 +24,11 @@ async def run_pipeline_for_document(
     logger.info("Start processing doc_id='%s', title='%s'.", doc_id, raw_document.title)
 
     preprocessed = preprocess_content(raw_document.raw_content)
-
-    classification = await classify_document(
-        title=raw_document.title,
-        content=preprocessed,
-    )
+    logger.debug("Using rule-based classifier for title='%s'.", raw_document.title)
+    classification = rule_based_classify(raw_document.title, preprocessed)
 
     processor = PROCESSOR_MAP[classification.document_type.value]
     processed = processor(preprocessed)
-
     chunks = plan_chunks(
         document_type=classification.document_type,
         title=raw_document.title,

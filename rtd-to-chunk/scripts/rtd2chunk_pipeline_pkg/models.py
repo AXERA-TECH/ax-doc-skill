@@ -30,7 +30,7 @@ class DocumentType(str, Enum):
         return descriptions[self]
 
     @property
-    def router_aliases(self) -> tuple[str, ...]:
+    def type_aliases(self) -> tuple[str, ...]:
         aliases = {
             DocumentType.OVERVIEW: ("overview",),
             DocumentType.QUICK_START: ("quick_start", "quickstart"),

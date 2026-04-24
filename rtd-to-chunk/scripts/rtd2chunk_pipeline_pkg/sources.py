@@ -1,17 +1,16 @@
-"""Offline markdown and GitHub RTD source adapters."""
+"""Offline and GitHub markdown loaders."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import json
 import logging
-from pathlib import Path
 import re
+from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+from .common import make_doc_id, utc_now_iso
 from .models import RawDocument
-from .utils import make_doc_id
 
 
 TITLE_LINE_RE = re.compile(r"^Title:\s*(.+?)\s*$", re.MULTILINE)
@@ -45,7 +44,7 @@ def load_offline_documents(input_dir: Path, glob_pattern: str = "*.md") -> list[
                 title=title,
                 raw_content=raw,
                 source="offline_md",
-                fetched_at=datetime.now(timezone.utc).isoformat(),
+                fetched_at=utc_now_iso(),
             )
         )
     logger.info("Loaded offline documents count=%d.", len(docs))
@@ -134,7 +133,7 @@ def _load_single_github_markdown(owner: str, repo: str, branch: str, file_path: 
         title=title,
         raw_content=raw,
         source="github_rtd",
-        fetched_at=datetime.now(timezone.utc).isoformat(),
+        fetched_at=utc_now_iso(),
     )
 
 

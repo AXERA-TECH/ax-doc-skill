@@ -1,34 +1,4 @@
-"""
-Pulsar2 document preprocessing and section-chunking module.
-
-This module performs the following stages in a fixed order:
-
-1. Preprocessing (`preprocess_content`)
-   - Input: raw Markdown text, which may include HTML, links, and RTD-generated anchors.
-   - Steps:
-     a) Normalize line endings and unescape HTML entities (for example, `&lt;` -> `<`).
-     b) Remove URLs from Markdown links while keeping readable link text; also remove bare URLs.
-     c) Strip HTML tags and collapse common line-break tags (`<br>`, `</p>`, etc.) into newlines.
-     d) Remove the `### log 参考信息` section: drop content from that heading until the next
-        heading at the same or higher level (`#`, `##`, or `###`).
-     e) Collapse excessive blank lines and apply `strip()`.
-   - Output: `preprocessed_content` for downstream routing, processing, and chunking.
-
-2. Section chunking (`plan_chunks`)
-   - Input: preprocessed Markdown text.
-   - Rules:
-     a) Only `#`, `##`, and `###` are treated as section boundaries.
-     b) Exactly one chunk is produced per section (one section -> one chunk).
-     c) `####` and deeper headings are not split into separate chunks; they stay in section body.
-     d) `section_path` is maintained using a heading-level stack, for example:
-        `["4. Quick Start", "4.3. Compile and Run", "4.3.2. Output File Notes"]`.
-   - Output: a list of `DocumentChunk` objects while preserving stable field contracts
-     (`chunk_id`, `chunk_type`, `retrieval_text`, etc.).
-
-3. Retrieval text construction (`build_retrieval_text`)
-   - Construct retrieval text from section metadata and section body.
-   - Normalize Markdown table padding spaces in table rows for compact retrieval text.
-"""
+"""Pulsar2-oriented preprocessing, section extraction, and chunk planning."""
 
 from __future__ import annotations
 
@@ -38,8 +8,8 @@ import logging
 import re
 from typing import Any
 
+from .common import stable_hash
 from .models import DocumentChunk, DocumentType
-from .utils import stable_hash
 
 
 HEADING_RE = re.compile(r"^\s{0,3}(#{1,6})\s+(.*)$")
@@ -60,6 +30,9 @@ class Section:
     body: str
 
 
+# preprocess
+# Normalize raw RTD/Pulsar2 text, strip noisy markup/links, and drop log reference sections
+# before any document-type-specific processing starts.
 def _normalize_raw_text(text: str) -> str:
     normalized = text.replace("\r\n", "\n").replace("\r", "\n")
     normalized = unescape(normalized)
@@ -73,6 +46,11 @@ def _strip_links_and_html(text: str) -> str:
     text = RAW_URL_RE.sub("", text)
     text = HTML_TAG_RE.sub("", text)
     return text
+
+
+def _clean_heading_text(text: str) -> str:
+    cleaned = re.sub(r"\s*#+\s*$", "", text).strip()
+    return cleaned.rstrip("#").strip()
 
 
 def _is_log_reference_heading(line: str) -> bool:
@@ -113,11 +91,9 @@ def preprocess_content(text: str) -> str:
     return EXCESS_NEWLINES_RE.sub("\n\n", data).strip()
 
 
-def _clean_heading_text(text: str) -> str:
-    cleaned = re.sub(r"\s*#+\s*$", "", text).strip()
-    return cleaned.rstrip("#").strip()
-
-
+# table
+# Keep markdown tables stable in retrieval text so downstream indexing preserves table semantics
+# without changing the original chunk planning logic.
 def _is_markdown_table_row(line: str) -> bool:
     stripped = line.strip()
     return stripped.count("|") >= 2 and not stripped.startswith("#")
@@ -195,8 +171,10 @@ def _normalize_markdown_table_spacing(text: str) -> str:
     return "\n".join(rewritten)
 
 
+# section
+# Split the processed markdown by h1-h3 headings. Deeper headings are kept inside the current
+# section body because the Pulsar2 docs benefit from slightly coarser section granularity.
 def extract_sections(text: str) -> list[Section]:
-    """Split content by markdown chapter headings: `#`, `##`, `###`."""
     sections: list[Section] = []
     stack: list[tuple[int, str]] = []
 
@@ -227,7 +205,6 @@ def extract_sections(text: str) -> list[Section]:
 
         heading_level = len(match.group(1))
         if heading_level > 3:
-            # Level-4+ headings stay in current section body.
             current_lines.append(line)
             continue
 
@@ -245,7 +222,6 @@ def extract_sections(text: str) -> list[Section]:
 
     flush()
 
-    # If no chapter heading exists, keep one fallback chunk for full content.
     if not any(section.level > 0 for section in sections):
         raw = text.strip()
         if raw:
@@ -255,6 +231,9 @@ def extract_sections(text: str) -> list[Section]:
     return [section for section in sections if section.level > 0 and section.body]
 
 
+# chunk
+# Build retrieval-facing chunks from section bodies. The current strategy emits one overview chunk
+# per section and keeps ids stable from document type, path, order, and content prefix.
 def _chunk_id(document_type: DocumentType, title: str, section_path: list[str], chunk_type: str, order: int, text: str) -> str:
     base = f"{document_type.value}|{title}|{'/'.join(section_path)}|{chunk_type}|{order}|{text[:120]}"
     return stable_hash(base, 12)

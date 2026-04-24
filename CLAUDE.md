@@ -29,7 +29,7 @@ pip install -r requirements.txt
 ```bash
 # rtd-to-chunk
 cd rtd-to-chunk
-python scripts/chunk.py --input-url https://github.com/<org>/<repo> --output-dir scripts/tmp --router-mode rule
+python scripts/chunk.py --input-url https://github.com/<org>/<repo> --output-dir scripts/tmp
 
 # chunk-to-db
 cd chunk-to-db
@@ -46,15 +46,14 @@ python scripts/server_db.py --db-dir assets/pulsar2_rtd --table pulsar2-doc --ac
 
 核心逻辑在 `rtd-to-chunk/scripts/rtd2chunk_pipeline_pkg/`：
 
-- `pipeline.py`：编排单文档和批量流程（asyncio + Semaphore 控制并发）
-- `router.py`：文档分类，规则路由（`rule_based_classify`）
+- `engine.py`：编排单文档和批量流程（asyncio + Semaphore 控制并发）
+- `rules.py`：文档分类与类型处理器（`rule_based_classify` + `PROCESSOR_MAP`）
 - `models.py`：核心数据结构——`RawDocument` → `DocumentClassification` → `DocumentChunk` → `PipelineResult`
-- `processors.py`：按 `DocumentType` 分派处理逻辑，通过 `PROCESSOR_MAP` 索引
-- `pulsar2_chunker.py`：`preprocess_content` + `plan_chunks`，切块的核心策略
-- `source_adapters.py`：输入源适配，支持本地目录和 GitHub URL
-- `runner.py`：`chunk.py` 的实际驱动层
+- `pulsar2_chunking.py`：`preprocess_content` + `plan_chunks`，Pulsar2 文档定向切块策略
+- `sources.py`：输入源适配，支持本地目录和 GitHub URL
+- `cli.py`：`chunk.py` 的实际驱动层
 
-**DocumentType** 枚举共四类：`overview`、`quick_start`、`parameter_reference`、`list`。修改切块策略时只需改 `pulsar2_chunker.py` 和 `processors.py`。
+**DocumentType** 枚举共四类：`overview`、`quick_start`、`parameter_reference`、`list`。修改切块策略时主要改 `pulsar2_chunking.py` 和 `rules.py`。
 
 ### chunk-to-db 与 pulsar2-doc-search 的数据路径
 
@@ -69,4 +68,4 @@ python scripts/server_db.py --db-dir assets/pulsar2_rtd --table pulsar2-doc --ac
 - 修改切块策略，优先改 `rtd-to-chunk/scripts/rtd2chunk_pipeline_pkg/`，不改其他 Skill。
 - `chunk-to-db` 向量构建失败时应降级为 FTS，不应中断入库流程。
 - FTS 建索引为 best effort，索引失败不阻断核心入库。
-- 调试切块输出：使用 `rtd-to-chunk/scripts/debug.py` 导出全部 `retrieval_text` 审阅；换 `run_id` 重跑避免覆盖历史结果。
+- 调试切块输出：直接检查 `rtd-to-chunk/scripts/tmp/<run_id>/` 下的文档 JSON 和 `_run_summary.json`；换 `run_id` 重跑避免覆盖历史结果。

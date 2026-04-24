@@ -1,4 +1,4 @@
-"""CLI runner for execute."""
+"""CLI entry and run orchestration."""
 
 from __future__ import annotations
 
@@ -7,11 +7,10 @@ import asyncio
 import logging
 from pathlib import Path
 
-from .logging_utils import setup_logging
+from .common import dump_json, setup_logging, utc_now_iso
+from .engine import run_pipeline_batch
 from .models import RawDocument
-from .pipeline import run_pipeline_batch
-from .source_adapters import load_github_rtd_documents, load_offline_documents
-from .utils import dump_json, utc_now_iso
+from .sources import load_github_rtd_documents, load_offline_documents
 
 logger = logging.getLogger(__name__)
 

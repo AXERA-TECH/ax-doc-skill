@@ -1,12 +1,4 @@
-"""
-Flow
-----
-document_type processor
-  -> overview_function: compress command/log-heavy long fences
-  -> quick_start_function: remove log noise in code context
-  -> parameter_reference_function: keep table structure, drop terminal noise
-  -> list_function: keep list order, dedupe adjacent duplicates
-"""
+"""Rule-based classification and content processors."""
 
 from __future__ import annotations
 
@@ -14,7 +6,17 @@ from collections import deque
 import logging
 import re
 
-from .models import DocumentType
+from .models import DocumentClassification, DocumentType
+
+
+OVERVIEW_TITLE_SIGNALS = ("概述", "简介", "introduction", "overview")
+QUICK_START_SIGNALS = ("快速开始", "quick start", "开发环境准备", "环境准备", "前置条件", "步骤", "安装", "运行示例")
+STRONG_PARAMETER_TITLE_SIGNALS = ("参数", "参数说明", "参数参考", "配置文件", "配置参考", "reference", "config")
+STRONG_PARAMETER_CONTENT_SIGNALS = ("默认值", "取值范围", "required", "default", "option:", "字段", "属性")
+WEAK_PARAMETER_CONTENT_SIGNALS = ("参数", "配置", "attribute", "parameter")
+STRONG_LIST_TITLE_SIGNALS = ("支持列表", "算子支持列表", "support list", "op_support_list", "faq", "索引", "资源列表", "能力列表", "清单")
+STRONG_LIST_CONTENT_SIGNALS = ("支持列表", "算子支持列表", "support list", "op_support_list", "常见问题", "faq", "资源列表")
+WEAK_LIST_SIGNALS = ("列表", "清单", "索引")
 
 LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)]|[A-Za-z][.)])\s+")
 TABLE_SEPARATOR_RE = re.compile(r"^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*$")
@@ -23,7 +25,6 @@ LOG_LINE_RE = re.compile(
     r"(?:\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2})",
     re.IGNORECASE,
 )
-
 LONG_CODE_FENCE_RE = re.compile(r"(```[\s\S]*?```)", re.MULTILINE)
 COMMAND_HINT_RE = re.compile(r"^\s*(?:\$ |# |python\d?(?:\.\d+)?\b|pip\d?(?:\.\d+)?\b|bash\b|sh\b)")
 LOG_HINT_RE = re.compile(
@@ -31,7 +32,6 @@ LOG_HINT_RE = re.compile(
     r"(?:\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2})",
     re.IGNORECASE,
 )
-
 LOG_LEVEL_RE = re.compile(r"\b(?:INFO|WARNING|WARN|ERROR|ERR|DEBUG|TRACE|CRITICAL|FATAL)\b", re.IGNORECASE)
 TIMESTAMP_RE = re.compile(
     r"(?:\d{4}[-/]\d{2}[-/]\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?)|"
@@ -46,6 +46,40 @@ FILE_LIKE_RE = re.compile(r"\b[\w./-]+\.(?:py|bin|onnx|json|yaml|yml|txt|log|so|
 SECTION_HINT_RE = re.compile(r"(?:示例(?:代码|命令|输出|日志)?|命令示例|运行示例|输出示例|日志示例|执行结果|运行结果|控制台输出|终端输出)", re.IGNORECASE)
 PROGRESS_RE = re.compile(r"(?:\b\d{1,3}%\b.*(?:\||/|it/s|s/it|ETA))|(?:[=>-]{8,})|(?:█{4,})", re.IGNORECASE)
 logger = logging.getLogger(__name__)
+
+
+def rule_based_classify(title: str, content: str) -> DocumentClassification:
+    normalized_content = content
+    title_lower = title.lower()
+    content_lower = normalized_content.lower()
+    merged = f"{title_lower}\n{content_lower}"
+
+    overview_title_signals = [s for s in OVERVIEW_TITLE_SIGNALS if s in title_lower]
+    if overview_title_signals and "quick start" not in title_lower and "快速开始" not in title:
+        return DocumentClassification(DocumentType.OVERVIEW, 0.84, "规则命中 overview 标题信号。", overview_title_signals)
+
+    quick_start_signals = [s for s in QUICK_START_SIGNALS if s in title_lower or s in content_lower]
+    strong_quick_start_title = any(s in title_lower for s in ("quick start", "快速开始"))
+    if any(signal in title for signal in ("开发环境准备", "环境准备")) and "配置文件" not in title:
+        strong_quick_start_title = True
+    if quick_start_signals and strong_quick_start_title:
+        return DocumentClassification(DocumentType.QUICK_START, 0.8, "规则命中 quick_start 标题信号。", quick_start_signals)
+
+    strong_parameter_title_signals = [s for s in STRONG_PARAMETER_TITLE_SIGNALS if s in title_lower]
+    strong_parameter_content_signals = [s for s in STRONG_PARAMETER_CONTENT_SIGNALS if s in content_lower]
+    weak_parameter_content_signals = [s for s in WEAK_PARAMETER_CONTENT_SIGNALS if s in content_lower]
+    if strong_parameter_title_signals or (len(strong_parameter_content_signals) >= 2 and len(weak_parameter_content_signals) >= 1):
+        matched = list(dict.fromkeys(strong_parameter_title_signals + strong_parameter_content_signals + weak_parameter_content_signals))
+        return DocumentClassification(DocumentType.PARAMETER_REFERENCE, 0.74, "规则命中参数参考信号。", matched)
+
+    strong_list_title_signals = [s for s in STRONG_LIST_TITLE_SIGNALS if s in title_lower]
+    strong_list_content_signals = [s for s in STRONG_LIST_CONTENT_SIGNALS if s in merged]
+    weak_list_signals = [s for s in WEAK_LIST_SIGNALS if s in title or s in normalized_content]
+    if strong_list_title_signals or (strong_list_content_signals and len(weak_list_signals) >= 2):
+        matched = list(dict.fromkeys(strong_list_title_signals + strong_list_content_signals))
+        return DocumentClassification(DocumentType.LIST, 0.76, "规则命中列表类信号。", matched)
+
+    return DocumentClassification(DocumentType.OVERVIEW, 0.55, "未命中强信号，默认 overview。", ["default_overview"])
 
 
 def overview_function(text: str) -> str:
