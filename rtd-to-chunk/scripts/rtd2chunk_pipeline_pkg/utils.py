@@ -29,14 +29,6 @@ def make_doc_id(title: str, url: str, raw_content: str) -> str:
     return stable_hash(seed, length=16)
 
 
-def read_text(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
-
-
-def read_json(path: Path) -> dict[str, Any]:
-    return json.loads(read_text(path))
-
-
 def dump_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")

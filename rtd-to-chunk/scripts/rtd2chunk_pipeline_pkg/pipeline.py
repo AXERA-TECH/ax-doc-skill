@@ -6,8 +6,8 @@
 #   |
 #   v
 # classify_document(title, preprocessed, router_mode)
-#   |                         \
-#   | rule_based_classify      \ llm_classify (fallback to rule)
+#   |
+#   rule_based_classify
 #   v
 # PROCESSOR_MAP[document_type](preprocessed)
 #   |
@@ -27,11 +27,9 @@ from __future__ import annotations
 import asyncio
 import logging
 from pathlib import Path
-from typing import Literal
-
 from .models import DocumentClassification, PipelineResult, RawDocument
-from .processors import PROCESSOR_MAP
-from .router import llm_classify, rule_based_classify
+from .rtd_processors import PROCESSOR_MAP
+from .router import  rule_based_classify
 from .pulsar2_chunker import plan_chunks, preprocess_content
 from .utils import dump_json
 
@@ -42,26 +40,15 @@ async def classify_document(
     *,
     title: str,
     content: str,
-    router_mode: Literal["rule", "llm"] = "rule",
-    llm_model: str | None = None,
 ) -> DocumentClassification:
-    if router_mode == "rule":
-        logger.debug("Using rule-based classifier for title='%s'.", title)
-        return rule_based_classify(title, content)
-    try:
-        return await llm_classify(title, content, model=llm_model)
-    except Exception:
-        logger.warning("LLM classifier failed, fallback to rule-based classifier for title='%s'.", title, exc_info=True)
-        return rule_based_classify(title, content)
-
+    logger.debug("Using rule-based classifier for title='%s'.", title)
+    return rule_based_classify(title, content)
 
 async def run_pipeline_for_document(
     *,
     run_id: str,
     raw_document: RawDocument,
     output_dir: Path,
-    router_mode: Literal["rule", "llm"] = "rule",
-    llm_model: str | None = None,
 ) -> PipelineResult:
     doc_id = raw_document.doc_id
     logger.info("Start processing doc_id='%s', title='%s'.", doc_id, raw_document.title)
@@ -71,8 +58,6 @@ async def run_pipeline_for_document(
     classification = await classify_document(
         title=raw_document.title,
         content=preprocessed,
-        router_mode=router_mode,
-        llm_model=llm_model,
     )
 
     processor = PROCESSOR_MAP[classification.document_type.value]
@@ -112,8 +97,6 @@ async def run_pipeline_batch(
     documents: list[RawDocument],
     output_dir: Path,
     max_concurrency: int = 4,
-    router_mode: Literal["rule", "llm"] = "rule",
-    llm_model: str | None = None,
 ) -> list[PipelineResult]:
     logger.info(
         "Batch run started. run_id='%s', documents=%d, max_concurrency=%d.",
@@ -131,8 +114,6 @@ async def run_pipeline_batch(
                     run_id=run_id,
                     raw_document=item,
                     output_dir=output_dir,
-                    router_mode=router_mode,
-                    llm_model=llm_model,
                 )
             except Exception:
                 logger.exception("Document failed in batch. run_id='%s', doc_id='%s'.", run_id, item.doc_id)

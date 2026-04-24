@@ -56,8 +56,6 @@ async def _run_execute(args: argparse.Namespace) -> None:
         documents=documents,
         output_dir=output_dir,
         max_concurrency=args.max_concurrency,
-        router_mode=args.router_mode,
-        llm_model=args.llm_model,
     )
     summary = {
         "run_id": run_id,
@@ -86,17 +84,6 @@ def build_parser() -> argparse.ArgumentParser:
     execute.add_argument("--output-dir", required=True, help="Output root directory.")
     execute.add_argument("--glob", default="*.md", help="Input file glob pattern.")
     execute.add_argument("--max-concurrency", type=int, default=4, help="Max concurrent document tasks.")
-    execute.add_argument(
-        "--router-mode",
-        choices=("rule", "llm"),
-        default="rule",
-        help="Document router mode.",
-    )
-    execute.add_argument(
-        "--llm-model",
-        required=False,
-        help="LLM model name used only when router mode is llm.",
-    )
     execute.add_argument("--run-id", required=False)
     return parser
 

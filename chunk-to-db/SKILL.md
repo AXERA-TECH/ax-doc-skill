@@ -5,13 +5,13 @@ description: Build the LanceDB vector database from JSON result files produced b
 
 # Chunk To DB
 
-执行 `chunk JSON -> LanceDB` 构建流程。
+执行 `chunk JSON -> LanceDB` 构建流程
 
 ## Scope
 
 - 仅负责数据库构建与增量写入。
 - 不负责查询与健康检查。
-- 查询能力已迁移到 `pulsar2-doc-search`（`scripts/server_db.py`）。
+- 查询能力使用`pulsar2-doc-search`。
 
 ## Quick Start
 
@@ -40,7 +40,7 @@ python scripts/build_db.py \
 ## Workflow
 
 1. 选择输入 chunk 目录（来自 `rtd-to-chunk` 输出）。
-2. 使用 `build_db.py` 写入 LanceDB（`overwrite` 或 `append`）。
+2. 使用 `build_db.py` 写入 LanceDB（`overwrite` 或 `append`）,将文件放入`pulsar2-doc-search/assets`
 3. 由 `pulsar2-doc-search/scripts/server_db.py` 执行后续 `health/list/search`。
 
 ## Script API

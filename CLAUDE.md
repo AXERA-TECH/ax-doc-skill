@@ -4,13 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-`ax-doc-skill` 是三个面向 Nanobot 的文档处理 Skills，构成一条完整的离线流水线：
+`ax-doc-skill` 是三个面向 RTD 的文档处理 Skills，构成一条完整的离线流水线：
 
 ```
 RTD Markdown → rtd-to-chunk → chunk-to-db → pulsar2-doc-search
 ```
 
-每个 Skill 目录结构相同：`agents/`（Nanobot 接口描述）、`scripts/`（可执行脚本）、`SKILL.md`（Skill 行为说明）。
+并在 CI 流程中，预构建爱芯元智自研 NPU 工具链 [Pulsar2](https://github.com/AXERA-TECH/pulsar2-docs) 的官方仓库文档 LanceDB 数据库。
+
+
+每个 Skill 目录结构相同：`agents/`（Skill接口描述）、`scripts/`（可执行脚本）、`SKILL.md`（Skill 行为说明）。
 
 ## 常用命令
 
@@ -20,27 +23,13 @@ RTD Markdown → rtd-to-chunk → chunk-to-db → pulsar2-doc-search
 pip install -r requirements.txt
 ```
 
-### 端到端测试（rtd-to-chunk → chunk-to-db → pulsar2-doc-search）
-
-```bash
-# 仅 FTS（无需 OPENAI_API_KEY）
-python test_pipeline.py --providers none
-
-# 含向量（需要 OPENAI_API_KEY）
-python test_pipeline.py --providers none,openai
-
-# 指定目标仓库
-python test_pipeline.py --repo-url https://github.com/AXERA-TECH/pulsar2-docs
-```
-
-测试报告写入 `pulsar2-doc-search/assets/test_report_<run_id>.json`。
 
 ### 单独运行各 Skill
 
 ```bash
 # rtd-to-chunk
 cd rtd-to-chunk
-python scripts/execute.py --input-url https://github.com/<org>/<repo> --output-dir scripts/tmp --router-mode rule
+python scripts/chunk.py --input-url https://github.com/<org>/<repo> --output-dir scripts/tmp --router-mode rule
 
 # chunk-to-db
 cd chunk-to-db
@@ -58,12 +47,12 @@ python scripts/server_db.py --db-dir assets/pulsar2_rtd --table pulsar2-doc --ac
 核心逻辑在 `rtd-to-chunk/scripts/rtd2chunk_pipeline_pkg/`：
 
 - `pipeline.py`：编排单文档和批量流程（asyncio + Semaphore 控制并发）
-- `router.py`：文档分类，支持规则路由（`rule_based_classify`）和 LLM 路由（`llm_classify`，失败自动回退规则路由）
+- `router.py`：文档分类，规则路由（`rule_based_classify`）
 - `models.py`：核心数据结构——`RawDocument` → `DocumentClassification` → `DocumentChunk` → `PipelineResult`
 - `processors.py`：按 `DocumentType` 分派处理逻辑，通过 `PROCESSOR_MAP` 索引
 - `pulsar2_chunker.py`：`preprocess_content` + `plan_chunks`，切块的核心策略
 - `source_adapters.py`：输入源适配，支持本地目录和 GitHub URL
-- `runner.py`：`execute.py` 的实际驱动层
+- `runner.py`：`chunk.py` 的实际驱动层
 
 **DocumentType** 枚举共四类：`overview`、`quick_start`、`parameter_reference`、`list`。修改切块策略时只需改 `pulsar2_chunker.py` 和 `processors.py`。
 

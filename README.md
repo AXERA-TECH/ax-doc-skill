@@ -16,6 +16,35 @@ pulsar2-doc-search    对 LanceDB 执行 FTS / 向量 / 混合检索
 
 三个 Skill 各司其职，可单独使用，也可按顺序串联完成端到端入库与检索。
 
+## 一键构建 Pulsar2 DB
+
+项目根目录提供脚本 `build_pulsar2_db_pipeline.py`，用于一键执行：
+
+1. 从 `https://github.com/AXERA-TECH/pulsar2-docs` 拉取并切分文档（`rtd-to-chunk/scripts/execute.py`）
+2. 构建 LanceDB（`chunk-to-db/scripts/build_db.py`）
+3. 覆盖 `chunk-to-db/assets/pulsar2_rtd`（默认会先删除旧目录再重建）
+
+仅 FTS（默认）：
+
+```bash
+python3 build_pulsar2_db_pipeline.py
+```
+
+向量构建（需要 `OPENAI_API_KEY`）：
+
+```bash
+python3 build_pulsar2_db_pipeline.py --embedding-provider openai
+```
+
+常用参数：
+
+- `--repo-url`：指定 GitHub 仓库/目录 URL
+- `--run-id`：指定本次产物目录名
+- `--router-mode rule|llm`、`--llm-model`：控制切分路由
+- `--table`：指定目标表名（默认 `pulsar2-doc`）
+- `--db-subdir`：指定 `chunk-to-db/assets` 下 DB 子目录（默认 `pulsar2_rtd`）
+- `--keep-existing-db`：构建前不删除现有 DB 目录（仍以 `overwrite` 模式写表）
+
 ## Skills
 
 ### rtd-to-chunk
@@ -56,10 +85,11 @@ pulsar2-doc-search    对 LanceDB 执行 FTS / 向量 / 混合检索
 
 ## TODO LIST
 - [ ] 完善使用文档
-  - [ ]  nanobot
-  - [ ]  openclaw
+  - [x]  nanobot
+  - [ ]  Claude Code
+  - [ ]  CodeX
+  - [ ] openclaw
   - [ ]  hermes
 - [ ] 搭建评估体系,实现自适应chunk策略迭代闭环
 - [ ] 更加轻量化
 - [ ] ...
-

@@ -1,10 +1,8 @@
-"""Document classification: rule-based and optional LLM router."""
+"""Document classification: RTD文档的启发式分类逻辑"""
 
 from __future__ import annotations
 
-import json
 import logging
-import os
 
 from .models import DocumentClassification, DocumentType
 
@@ -51,106 +49,3 @@ def rule_based_classify(title: str, content: str) -> DocumentClassification:
     return DocumentClassification(DocumentType.OVERVIEW, 0.55, "未命中强信号，默认 overview。", ["default_overview"])
 
 
-def _normalize_document_type(value: str) -> DocumentType:
-    normalized = value.strip().lower()
-    alias_map: dict[str, DocumentType] = {}
-    for item in DocumentType:
-        for alias in item.router_aliases:
-            alias_map[alias.lower()] = item
-    if normalized not in alias_map:
-        raise ValueError(f"Unsupported document_type from LLM: {value}")
-    return alias_map[normalized]
-
-
-def _build_router_prompt() -> str:
-    type_priority_rules: dict[DocumentType, str] = {
-        DocumentType.QUICK_START: "若文档既有概述也有步骤，但核心目的是带用户快速完成一次操作，优先判定为 quick_start。",
-        DocumentType.PARAMETER_REFERENCE: "若文档主要在解释参数、字段或配置项，即使有少量示例，也优先判定为 parameter_reference。",
-        DocumentType.LIST: "若文档主要由条目枚举构成，而不是完整讲解或操作流程，优先判定为 list。",
-        DocumentType.OVERVIEW: "若文档是高层介绍、设计理念、背景说明或能力总览，优先判定为 overview。",
-    }
-    type_lines: list[str] = []
-    for idx, item in enumerate(DocumentType, start=1):
-        aliases = "/".join(item.router_aliases)
-        type_lines.append(
-            f"{idx}. {item.value}（别名: {aliases}）：{item.classification_description}"
-            f" 分类优先规则：{type_priority_rules[item]}"
-        )
-    allowed = "|".join(item.value for item in DocumentType)
-
-    return (
-        "你是一个文档路由分类器。"
-        "你的任务是根据文档标题和正文内容，将文档严格分类到以下类型之一：\n"
-        + "\n".join(type_lines)
-        + "\n\n通用约束：必须且只能选择一个最主要的文档类型。\n\n"
-        "Return strict JSON only: "
-        f'{{"document_type":"{allowed}","confidence":0.0,"reasoning":"...","matched_signals":["..."]}}.'
-    )
-
-
-async def llm_classify(
-    title: str,
-    content: str,
-    *,
-    model: str | None = None,
-    api_key: str | None = None,
-    base_url: str | None = None,
-    timeout_seconds: int = 20,
-) -> DocumentClassification:
-    key = api_key or os.getenv("OPENAI_API_KEY")
-    if not key:
-        raise ValueError("OPENAI_API_KEY is required for llm router mode")
-    endpoint = (base_url or os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
-    model_name = model or os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
-
-    truncated = content[:6000]
-    prompt = _build_router_prompt()
-    user_input = f"title:\n{title}\n\ncontent:\n{truncated}"
-    body = {
-        "model": model_name,
-        "temperature": 0,
-        "response_format": {"type": "json_object"},
-        "messages": [
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": user_input},
-        ],
-    }
-    try:
-        from openai import AsyncOpenAI  # type: ignore
-    except ImportError as exc:
-        raise RuntimeError("openai package is required for llm router mode") from exc
-
-    client = AsyncOpenAI(
-        api_key=key,
-        base_url=endpoint,
-        timeout=float(timeout_seconds),
-    )
-    try:
-        response = await client.chat.completions.create(
-            model=body["model"],
-            temperature=body["temperature"],
-            response_format=body["response_format"],
-            messages=body["messages"],
-        )
-    except Exception as exc:
-        raise RuntimeError(f"LLM classify request failed: {exc}") from exc
-
-    content_text = response.choices[0].message.content or ""
-    result = json.loads(content_text)
-
-    doc_type = _normalize_document_type(str(result.get("document_type", "")))
-    confidence = float(result.get("confidence", 0.65))
-    confidence = max(0.0, min(1.0, confidence))
-    reasoning = str(result.get("reasoning", "LLM classification"))
-    signals = result.get("matched_signals")
-    if not isinstance(signals, list):
-        signals = ["llm_router"]
-    signals = [str(item) for item in signals if str(item).strip()]
-    if not signals:
-        signals = ["llm_router"]
-    return DocumentClassification(
-        document_type=doc_type,
-        confidence=confidence,
-        reasoning=reasoning,
-        matched_signals=signals,
-    )

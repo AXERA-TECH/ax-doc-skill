@@ -1,6 +1,6 @@
 ---
 name: rtd-to-chunk
-description: Convert RTD-style markdown (local files or GitHub repository/tree/root URLs) into structured chunk JSON for retrieval and downstream DB build. Use when running `rtd-to-chunk/scripts/execute.py`, validating chunk output contracts, debugging preprocessing/classification/chunking behavior, exporting retrieval_text for review, or iterating rules in `scripts/rtd2chunk_pipeline_pkg/`.After chunk generation finishes, it will ask users whether to run chunk-to-db for LanceDB construction, and generate a dedicated retrieval skill following the logic of pulsar2-doc-search with a user-defined skill name.
+description: Convert RTD-style markdown (local files or GitHub repository/tree/root URLs) into structured chunk JSON for retrieval and downstream DB build. Use when running `rtd-to-chunk/scripts/chunk.py`.After chunk generation finishes, it will ask users whether to run chunk-to-db skill for LanceDB construction, and generate a dedicated retrieval skill following the logic of pulsar2-doc-search with a user-defined skill name.
 ---
 
 # RTD2Chunk Pipeline
@@ -10,16 +10,18 @@ description: Convert RTD-style markdown (local files or GitHub repository/tree/r
 ## 目标与边界
 
 - 目标：单次离线执行，把 RTD markdown 转为结构化 chunks。
-- 边界：仅使用 `execute.py`作为流程入口 。
-- 输入：离线 markdown 目录，或一个/多个 GitHub 仓库/目录 URL。
-- 输出：仅保存最终产物，供检索、评估、下游构建使用。
+- 边界：仅使用 `chunk.py`作为流程入口 。
+- 输入：
+  - 离线 markdown 目录
+  - 一个/多个 GitHub 仓库/目录 URL。
+- 输出：仅保存最终产物，供检索、评估、下游构建使用。在当前文件下生成tmp文件,在下游构建完成后删除。
 
 ## Quick Start
 
 离线目录模式：
 
 ```bash
-python scripts/execute.py \
+python scripts/chunk.py \
   --input-dir <offline_md_dir> \
   --output-dir <output_root_dir> \
   --router-mode rule \
@@ -31,7 +33,7 @@ python scripts/execute.py \
 GitHub URL 模式（可重复 `--input-url`）：
 
 ```bash
-python scripts/execute.py \
+python scripts/chunk.py \
   --input-url https://github.com/<org>/<repo> \
   --input-url https://github.com/<org>/<repo>/tree/<branch>/<path_optional> \
   --output-dir <output_root_dir> \
@@ -45,7 +47,6 @@ python scripts/execute.py \
 
 - 传入 `--input-dir` 或 `--input-url`（二选一）。
 - 必填 `--output-dir`。
-- `--router-mode llm` 时配置 `OPENAI_API_KEY`（可选 `OPENAI_BASE_URL`）。
 
 ## CLI 参数
 
@@ -54,8 +55,7 @@ python scripts/execute.py \
 - `--output-dir`：输出根目录（必填）。
 - `--glob`：输入文件匹配模式，默认 `*.md`。
 - `--max-concurrency`：并发度，默认 `4`。
-- `--router-mode`：`rule` 或 `llm`，默认 `rule`。
-- `--llm-model`：仅 `--router-mode llm` 时生效。
+- `--router-mode`：依文档类型处理逻辑的路由。
 - `--run-id`：运行标识，可选；不传自动生成。
 
 ## Run Workflow
@@ -74,7 +74,7 @@ python scripts/execute.py \
 ```text
 source(offline_md | github_rtd)
   -> preprocess
-  -> route(rule | llm->fallback rule)
+  -> route
   -> process(overview/quick_start/parameter_reference/list)
   -> chunk
   -> export(final json)
@@ -88,29 +88,9 @@ source(offline_md | github_rtd)
 
 ## Validation Checklist
 
-交付前至少验证：
+执行结束后至少验证：
 
 1. 命令执行无崩溃，输出目录存在。
-2. `_run_summary.json` 存在且计数正确。
-3. 每个文档 JSON 包含 `chunks`，且关键字段完整。
-4. 抽样确认 `retrieval_text` 不包含 `分块类型:`。
+2. 输出目录json文件存在。
 
-## LLM 环境变量
 
-- `OPENAI_API_KEY`：`--router-mode llm` 必需。
-- `OPENAI_BASE_URL`：可选，默认 `https://api.openai.com/v1`。
-
-## Debug Helpers
-
-- 使用 [`scripts/debug.py`](scripts/debug.py) 导出某目录下全部 `retrieval_text` 到审阅文件。
-- 修改策略后用新的 `run_id` 重跑，避免覆盖旧结果并方便 diff。
-
-## Edit Scope
-
-优先修改目录：`scripts/rtd2chunk_pipeline_pkg/`。
-
-不要在本技能内新增：
-
-- 多阶段迭代子命令，
-- 配置文件加载框架，
-- 额外持久化层。
