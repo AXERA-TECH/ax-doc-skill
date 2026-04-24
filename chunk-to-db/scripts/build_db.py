@@ -16,7 +16,7 @@ LANGUAGE='Chinese'
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="build_db")
     parser.add_argument("--input-dir", required=True, help="Directory containing chunk JSON outputs.")
-    parser.add_argument("--db-dir", default="assets/pulsar2_rtd", help="LanceDB directory.")
+    parser.add_argument("--db-dir", required=True, help="LanceDB directory.")
     parser.add_argument("--table", required=True, help="Target table name.")
     parser.add_argument(
         "--mode",
@@ -114,19 +114,20 @@ def _build_openai_embedder(model: str):
     except Exception as exc:
         raise RuntimeError("openai package is required for --embedding-provider openai") from exc
 
-    api_key = os.getenv("OPENAI_API_KEY")  
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY is required for --embedding-provider openai")
 
     # Optional: point to a compatible endpoint (self-hosted, gateway, etc.).
     base_url = os.getenv("OPENAI_BASE_URL")
-    # Alternatively, you can use this code to integrate your own embedding model. Please keep your API key secure and avoid leakage.
-    # OPENAI_API_KEY="sk-xxx"
-    # OPENAI_BASE_URL="https://example.com/v1"
-    # OPENAI_EMBEDDING_MODEL="Qwen/Qwen3-Embedding-4B"
-    # api_key=OPENAI_API_KEY
-    # base_url=OPENAI_BASE_URL
-    # model=OPENAI_EMBEDDING_MODEL
+
+    # Alternatively, you can use this code to integrate your own embedding model.
+    # Please keep your API key secure and avoid leakage.
+
+    # api_key="sk-xx"
+    # base_url="https://api.example.cn/v1"
+    # model="Qwen/Qwen3-Embedding-8B"
+    # logging.warning("Please keep your API key secure and avoid leakage.")
 
     if base_url:
         client = OpenAI(api_key=api_key, base_url=base_url)

@@ -15,17 +15,6 @@ description: Build the LanceDB vector database from JSON result files produced b
 
 ## Quick Start
 
-本地构建（仅 FTS）：
-
-```bash
-python scripts/build_db.py \
-  --input-dir ../rtd-to-chunk/scripts/tmp/<run_id> \
-  --db-dir ../pulsar2-doc-search/assets/pulsar2_rtd \
-  --table pulsar2-doc \
-  --mode overwrite \
-  --embedding-provider none
-```
-
 本地构建（含向量）：
 
 ```bash
@@ -37,11 +26,25 @@ python scripts/build_db.py \
   --embedding-provider openai
 ```
 
-## Workflow
+本地构建（仅 FTS）：
 
-1. 选择输入 chunk 目录（来自 `rtd-to-chunk` 输出）。
-2. 使用 `build_db.py` 写入 LanceDB（`overwrite` 或 `append`）,将文件放入`pulsar2-doc-search/assets`
-3. 由 `pulsar2-doc-search/scripts/server_db.py` 执行后续 `health/list/search`。
+```bash
+python scripts/build_db.py \
+  --input-dir ../rtd-to-chunk/scripts/tmp/<run_id> \
+  --db-dir ../pulsar2-doc-search/assets/pulsar2_rtd \
+  --table pulsar2-doc \
+  --mode overwrite \
+  --embedding-provider none
+```
+
+
+
+## Workflow
+ 
+2. 选择输入 chunk 目录（来自 `rtd-to-chunk` 输出）。
+2. 使用 `build_db.py` 写入 LanceDB（`overwrite` 或 `append`）,将文件放入`pulsar2-doc-search/assets`。
+3. 使用 `pulsar2-doc-search/scripts/server_db.py` 执行后续 `health/list/search`,查看是否构建成功。
+4. 构建成功后向用户同步相关信息。
 
 ## Script API
 
@@ -100,18 +103,7 @@ python scripts/build_db.py \
 3. 若启用向量，`embedded_rows > 0` 且 `vector_dim` 非空。
 4. 使用 `pulsar2-doc-search/scripts/server_db.py --action health` 返回 `status=ok`。
 
-## Environment
-
-当使用向量构建时：
-
-- `OPENAI_API_KEY`：`embedding-provider=openai` 时必需
-- `OPENAI_BASE_URL`：可选，用于网关或兼容服务
-
-
-
 ## Constraints
 
-- 不在 `chunk-to-db` 内修改 chunk 切分策略。
-- 不修改输入 chunk 源 JSON。
 - 优先使用向量构建方式,当环境变量不满足要求时,告知用户,并且切换为FTS构建.
 - 将 FTS 建索引视为 best effort，不因索引失败阻断核心入库。

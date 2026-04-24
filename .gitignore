@@ -11,3 +11,4 @@ AGENTS.md
 .idea
 chunk-to-db/assets
 pulsar2-doc-search/assets
+.DS_Store

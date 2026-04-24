@@ -158,13 +158,15 @@ def _build_openai_embedder(model: str):
 
     # Optional: point to a compatible endpoint (self-hosted, gateway, etc.).
     base_url = os.getenv("OPENAI_BASE_URL")
-    # Alternatively, you can use this code to integrate your own embedding model. Please keep your API key secure and avoid leakage.
-    # OPENAI_API_KEY="sk-xxx"
-    # OPENAI_BASE_URL="https://example.com/v1"
-    # OPENAI_EMBEDDING_MODEL="Qwen/Qwen3-Embedding-4B"
-    # api_key=OPENAI_API_KEY
-    # base_url=OPENAI_BASE_URL
-    # model=OPENAI_EMBEDDING_MODEL
+
+    # Alternatively, you can use this code to integrate your own embedding model.
+    # Please keep your API key secure and avoid leakage.
+
+    # api_key="sk-"
+    # base_url="https://api.siliconflow.cn/v1"
+    # model="Qwen/Qwen3-Embedding-8B"
+    # logging.warning("Please keep your API key secure and avoid leakage.")
+
     if base_url:
         client = OpenAI(api_key=api_key, base_url=base_url)
     else:

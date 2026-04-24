@@ -50,7 +50,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--embedding-provider",
         choices=("none", "openai"),
-        default="none",
+        default="openai",
         help="Embedding provider for build_db.",
     )
     parser.add_argument("--embedding-model", default="text-embedding-3-small", help="Embedding model for build_db.")

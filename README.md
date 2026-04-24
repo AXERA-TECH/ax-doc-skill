@@ -20,8 +20,8 @@ pulsar2-doc-search    对 LanceDB 执行 FTS / 向量 / 混合检索
 
 项目根目录提供脚本 `build_pulsar2_db_pipeline.py`，用于一键执行：
 
-1. 从 `https://github.com/AXERA-TECH/pulsar2-docs` 拉取并切分文档（`rtd-to-chunk/scripts/chunk.py`）
-2. 构建 LanceDB（`chunk-to-db/scripts/build_db.py`）
+1. 从 `https://github.com/AXERA-TECH/pulsar2-docs` 拉取并切分文档（`rtd-to-chunk/scripts/chunk.py`）,输出到`rtd-to-chunk/scripts/tmp`目录下
+2. 构建 LanceDB（`chunk-to-db/scripts/build_db.py`）,输出到`pulsar2-doc-search/assets/`目录下
 3. 覆盖 `pulsar2-doc-search/assets/pulsar2_rtd`（默认会先删除旧目录再重建）
 
 仅 FTS（默认）：
@@ -73,6 +73,9 @@ python3 build_pulsar2_db_pipeline.py --embedding-provider openai
 - 支持 one-shot 调用和 `--stdio` 常驻 JSON 协议
 
 ## 环境变量
+> 1. 不提供向量模型,数据库无法构建向量检索的功能,只影响检索,但不影响使用。
+> 2. 直接修改_build_openai_embedder函数也可以配置向量模型。
+> 3. 如果是使用预构建的Pulsar2 RTD数据库,使用的embedding模型为Qwen3-Embedding-8B,确保查询时用的模型保持一致。
 
 | 变量 | 用途 | 必需场景 |
 |------|------|----------|
@@ -80,9 +83,9 @@ python3 build_pulsar2_db_pipeline.py --embedding-provider openai
 | `OPENAI_BASE_URL` | 自定义 API 网关 | 可选 |
 
 
+## 在 Agent 中使用
 
-## 在 Nanobot 中使用
-
+### nanobot
 参考 [docs/assets/nanobot.md](docs/assets/nanobot.md) 了解如何将本项目的 Skills 接入 Nanobot，并通过飞书进行端到端验证。
 
 ## TODO LIST
